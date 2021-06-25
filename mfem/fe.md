@@ -43,21 +43,17 @@ table th:nth-of-type(2){
 
 ## 类 DofToQuad
 - `class DofToQuad`
+- 用于表示一个特定的有限元中的基函数在特定积分点上的值、梯度、散度或者旋度的值所张成的矩阵或者张量， DofToQuad 对象通常被对应的有限元对象创建和所有
 ### 类内类、枚举和结构体
 - ```C++
+  // public 枚举，用于描述储存在 #B ， #Bt ， #G ， 和 #Gt 中数据的类型
   enum Mode
    {
-      /** @brief Full multidimensional representation which does not use tensor
-          product structure. The ordering of the degrees of freedom is as
-          defined by #FE */
+      // 数据使用全维度表示，而不使用张量积结构，自由度的排序与 #FE 中所定义的一致
       FULL,
 
-      /** @brief Tensor product representation using 1D matrices/tensors with
-          dimensions using 1D number of quadrature points and degrees of
-          freedom. */
-      /** When representing a vector-valued FiniteElement, two DofToQuad objects
-          are used to describe the "closed" and "open" 1D basis functions
-          (TODO). */
+      // 数据使用张量积结构，即相应的矩阵\张量（通常对应于高维有限元）由1D有限元上相对应的矩阵\张量的张量积形式所表示 
+      // 当表示一个向量值有限元时，将使用两个 DofToQuad 对象来刻画“闭”和“开”的1D基函数
       TENSOR
    };
   ```
@@ -66,13 +62,13 @@ table th:nth-of-type(2){
 | ---- | ---- |
 | `const class FiniteElement *FE` | *FE 是创建和拥有这个 DofToQuad 对象的 FiniteElement 对象，此指针并不被 DofToQuad 对象所拥有 |
 | `const IntegrationRule *IntRule` | 有限元 *FE 上的基函数将在 IntegrationRule 对象 *IntRule 所刻画的积分点上取值，此指针并不被 DofToQuad 对象所拥有  |
-| `Mode mode` |  |
-| `int ndof` | 自由度个数 |
+| `Mode mode` | 描述储存在 #B ， #Bt ， #G ， 和 #Gt 中数据的类型 |
+| `int ndof` | 自由度的个数 |
 | `int nqpt` | 积分点的个数 |
-| `Array<double> B` | 基函数在积分点上的取值 |
-| `Array<double> Bt` | B 的转置 |
-| `Array<double> G` | 基函数在积分点上的梯度/散度/旋度 |
-| `Array<double> Gt` | G 的转置 |
+| `Array<double> B` | 基函数在积分点上的取值，相应的矩阵和张量按列储存 <br> - 对于标量型有限元，长为 #nqpt x #ndof <br> - 对于向量型有限元，长为 #nqpt x dim x #ndof <br> 其中，当 mode = FULL 时， dim 是参考有限元的维数；当 mode = TENSOR 时， dim = 1 |
+| `Array<double> Bt` | B 的转置，相应的矩阵和张量按列储存 <br> - 对于标量型有限元，长为 #ndof x #nqpt <br> - 对于向量型有限元，长为 #ndof x #nqpt x dim |
+| `Array<double> G` | 基函数在积分点上的梯度/散度/旋度，相应的矩阵和张量按列储存 <br> - 对标量型有限元（此时计算梯度），长为 #nqpt x dim x #ndof <br> - 对于 H(div) 型有限元（此时计算散度），长为 #nqpt x #ndof <br> - 对于 H(curl) 型有限元（此时计算旋度） <br> 其中， <br> - 当 mode = FULL 时， dim 是参考有限元的维数；当 mode = TENSOR 时， dim = 1 <br> - 当 mode = FULL 时，分别对于 1D/2D/3D 情形， cdim 为 1/1/3 ；当 mode = TENSOR 时， cdim = 1 |
+| `Array<double> Gt` | G 的转置，相应的矩阵和张量按列储存 <br> - 对于标量型有限元，长度为 #ndof x #nqpt x dim <br> - 对于 H(div) 型有限元，长度为 #ndof x #nqpt <br> - 对于 H(curl) 型有限元，长度为 #ndof x #nqpt x cdim | 
 
 ## 类 FunctionSpace
 - `class FunctionSpace`
@@ -357,14 +353,11 @@ table th:nth-of-type(2){
 | `static void CalcLegendre(const int p, const double x, double *u)` | （静态方法）计算 p 阶（p+1 个） Legendre 多项式在点 x 上的值，保存到 u 指向的已经分配好内存的数组中 |
 | `static void CalcLegendre(const int p, const double x, double *u, double *d)` | 静态方法）计算 p 阶（p+1 个） Legendre 多项式在点 x 上的值和导数值，分别保存到 u 和 d 指向的已经分配好内存的数组中 |
 | `~Poly_1D()` | 析构函数，释放 points_container 和 bases_container 中保存的指针指向的内存 |
-| `` |  |
-| `` |  |
-| `` |  |
 
 
 ## 类 TensorBasisElement
 - `class TensorBasisElement`
-- 定义为1D单元张量积的单元
+- 定义为1D单元的张量积的单元
 ### 类内类、枚举、结构体
 -   ```C++
     // public 枚举 
@@ -378,21 +371,31 @@ table th:nth-of-type(2){
 ### protected 成员变量
 | 变量 | 解释 |
 | ---- | ---- |
-| `int b_type` |  |
-| `Array<int> dof_map` |  |
-| `Poly_1D::Basis &basis1d` |  |
+| `int b_type` | 对应于1D单元的基类型 |
+| `Array<int> dof_map` | 一个长为单元自由度个数的 int 型数组，建立起单元内自由度自然排序和字典排序的映射，即如果 dof_map[i] = j ，那么按照字典排序第 i 个自由度对应的自然排序标号为 j ，如果 dof_map 为空，则意味着此映射为单位映射（意味着自由度按照字典排序） |
+| `Poly_1D::Basis &basis1d` | 对应于 1D 单元的 Poly_1D::Basis 引用 |
 | `Array<int> inv_dof_map` |  |
 | `Array<int> inv_dof_map` |  |
 ### public 成员函数
-| `TensorBasisElement(const int dims, const int p, const int btype, const DofMapType dmtype)` |  |
-| `int GetBasisType() const` |  |
-| `const Poly_1D::Basis& GetBasis1D()` |  |
-| `const Array<int> &GetDofMap() const` |  |
-| `static Geometry::Type GetTensorProductGeometry(int dim)` |  |
-| `static int Pow(int base, int dim)` |  |
-| `` |  |
-| `` |  |
-| `` |  |
+| 方法 | 解释 |
+| ---- | ---- |
+| `TensorBasisElement(const int dims, const int p, const int btype, const DofMapType dmtype)` | 构造函数，令 b_type 为 btype ，调用方法 `poly1d.GetBasis()` 构造 basis1d ，并根据维数 dims 和自由度映射类型 dmtype 构造 dof_map ：当 dmtype = L2_DOF_MAP 时，置 dof_map 为空，即此时自由度按照字典排序 |
+| `int GetBasisType() const` | 返回 b_type |
+| `const Poly_1D::Basis& GetBasis1D()` | 返回 basis1d （ const ） |
+| `const Array<int> &GetDofMap() const` | 返回 dof_map 的 const 引用 |
+| `static Geometry::Type GetTensorProductGeometry(int dim)` | （静态方法）根据维数 dim 返回张量型的几何类型，即 dim = 1 时返回 Geometry::SEGMENT ， dim = 2 时返回 Geometry::SQUARE ， dim = 3 时返回 Geometry::CUBE |
+| `static int Pow(int base, int dim)` | （静态方法）返回 $base^{dim}$ |
+
+
+## 类 NodalTensorFiniteElement
+- `class NodalTensorFiniteElement : public NodalFiniteElement, public TensorBasisElement`
+- 顶点张量型有限元，定义为1D顶点型有限元的张量基
+### public 成员函数
+| 方法 | 解释 |
+| ---- | ---- |
+| `NodalTensorFiniteElement(const int dims, const int p, const int btype, const DofMapType dmtype);` | 构造函数，根据相关信息分别调用父类的构造函数 `NodalFiniteElement()` 和 `TensorBasisElement()` ， 并令 lex_ordering = dof_map |
+| `const DofToQuad &GetDofToQuad(const IntegrationRule &ir, DofToQuad::Mode mode) const` | 根据积分点 ir 和模式 mode ，计算有限元对应的 DofToQuad 对象并返回 |
+| `virtual void GetTransferMatrix(const FiniteElement &fe, ElementTransformation &Trans, DenseMatrix &I) const` |  |
 | `` |  |
 | `` |  |
 | `` |  |

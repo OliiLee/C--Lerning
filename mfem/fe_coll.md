@@ -95,7 +95,7 @@
 ### protected 成员变量
 | 变量 | 解释 | 
 | ---- | ---- |
-| `int b_type` | 基类型，见类`BasisType` |
+| `int b_type` | 基类型，见类 `BasisType` |
 | `char h1_name[32]` | 当前 H1 协调元的名称 |
 | `FiniteElement *H1_Elements[Geometry::NumGeom]` | 长为 Geometry::NumGeom 的 FiniteElement* 型的数组，储存各个几何对象上（对应于阶数和基类型）的有限元  |
 | `int H1_dof[Geometry::NumGeom]` | 长为 Geometry::NumGeom 的 int 型数组，储存各个几何对象上自由度个数 |
