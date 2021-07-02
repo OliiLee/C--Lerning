@@ -95,7 +95,7 @@
 ### protected 成员变量
 | 变量 | 解释 | 
 | ---- | ---- |
-| `int b_type` | 基类型，见类 `BasisType` |
+| `int b_type` | （1D）基类型，见类 `BasisType` |
 | `char h1_name[32]` | 当前 H1 协调元的名称 |
 | `FiniteElement *H1_Elements[Geometry::NumGeom]` | 长为 Geometry::NumGeom 的 FiniteElement* 型的数组，储存各个几何对象上（对应于阶数和基类型）的有限元  |
 | `int H1_dof[Geometry::NumGeom]` | 长为 Geometry::NumGeom 的 int 型数组，储存各个几何对象上自由度个数 |
@@ -105,7 +105,7 @@
 #### 构造函数和析构函数
 | 方法 | 解释 | 
 | ---- | ---- |
-| `explicit H1_FECollection(const int p, const int dim = 3, const int btype = BasisType::GaussLobatto)` | 构造函数，根据输入的阶数 p ，维数 dim 和基类型 btype，为成员变量 b_type ， h1_name ， H1_Elements ， H1_dof ， XXXDofOrd 赋值，在 btype 为 BasisType::Serendipity 时需要特殊的处理 |
+| `explicit H1_FECollection(const int p, const int dim = 3, const int btype = BasisType::GaussLobatto)` | 构造函数，根据输入的阶数 p ，维数 dim 和基类型 btype，为成员变量 b_type ， h1_name ， H1_Elements ， H1_dof ， XXXDofOrd 赋值，<font color=yellow>在 btype 为 BasisType::Serendipity 时需要特殊的处理</font> |
 | `virtual ~H1_FECollection()` | （虚函数实例）析构函数，释放 H1_Elements ，SegDofOrd ， TriDofOrd ， QuadDofOrd ， TetDofOrd |
 #### 信息获取
 | 方法 | 解释 | 

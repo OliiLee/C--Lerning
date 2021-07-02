@@ -41,7 +41,7 @@ table th:nth-of-type(2){
 | `Ordering::Type ordering` |  |
 | `int ndofs` | 自由度的个数，未知量个数 = 自由度个数 * 向量维数 |
 | `int nvdofs, nedofs, nfdofs, nbdofs` | 分别记录顶点自由度、边自由度、面自由度和 bubble 自由度的个数 |
-| `int *fdofs, *bdofs` | int 型向量，分别记录面自由度和 bubble 自由度的分布信息，以 fdofs 为例，f[0] ~ f[1]-1 代表了第1个面上面自由度编号（即面自由度中的第 f[0] ~ f[1]-1 个自由度）。为什么需要 fdofs 和 bdofs ？实际上，因为网格中各个面和单元的几何可能不同，所以各个面（单元）对应的自由度个数可能是不同的  |
+| `int *fdofs, *bdofs` | int 型数组，分别记录面自由度和 bubble 自由度的分布信息，以 fdofs 为例，f[0] ~ f[1]-1 代表了第1个面上面自由度编号（即面自由度中的第 f[0] ~ f[1]-1 个自由度）。为什么需要 fdofs 和 bdofs ？实际上，因为网格中各个面和单元的几何可能不同，所以各个面（单元）对应的自由度个数可能是不同的  |
 | `mutable Table *elem_dof` | 表 elem_dof 记录了各个单元对应自由的编号 |
 | `mutable Table *bdrElem_dof` |  |
 | `mutable Table *face_dof` |  |
@@ -59,13 +59,25 @@ table th:nth-of-type(2){
 | `mutable Array<FaceQuadratureInterpolator*> E2IFQ_array` |  |
 | `mutable Array<FaceQuadratureInterpolator*> E2BFQ_array` |  |
 | `long sequence` | 应该与 mesh->GetSequence() 一致 |
+| `long mesh_sequence` |  |
+| `bool orders_changed;` |  |
+| `bool relaxed_hp` |  |
+### protected 成员函数
+| 方法 | 解释 |
+| ---- | ---- |
+| `void Construct()` | 帮助构造 fespace 对象，方法对 NURBS 空间或变阶数的协调空间是不适用的。设置 elem_dof = bdr_elem_dof = face_dof = NULL ，同时设置 cP = cR = cR_hp = NULL ， cP_is_set = false ；在设置各自由度个数时需要分为以下几种情况： <br> - 对于一般的网格，即每个单元、面、边上分别对应了相同的有限元，相应的自由度个数 nvdofs ， nedofs ， nfdofs 和 nbdofs 即分别是各个几何对象个数乘以相应几何对应的自由度个数的乘积 <br> - 对变阶数网格 <font color = yellow>边，待补充</font> <br> - 对于变阶数网格或者面上的有限元不一致 <font color = yellow>面，待补充</font> <br> - 对于变阶数网格或者单元上的有限元不一致 <font color = yellow>体，待补充</font> <br> 根据 mesh->GetSequence() 设置 mesh_sequence 并将 sequence 增加1，令 orders_changed = false |
+| `void Constructor(Mesh *mesh, NURBSExtension *ext, const FiniteElementCollection *fec, int vdim = 1, int ordering = Ordering::byNODES)` | 用于构造 fespace 对象，根据输入的参数 mesh ， fec ， vdim 和 ordering 给 this 对象的相应变量赋值，并设置 sequence = 0 ， orders_changed = relaxed_hp = false ， 设置 Th 的类型为 Operator::ANY_TYPE 。根据是否是 NURBS 网格，有 <br> - 如果是 NURBS 网格<font color=yellow>待补充</font> <br> - 如果不是 NURBS 网格，设置 this->NURBSext = NULL 和 own_ext = 0 ，并调用 `Construct()` 完成构造 <br> 最终，调用 `BuildElementToDofTable()` 建立单元-自由度表 elem_dof ，并设置面-自由度表 face_dof = NULL |
+| `void BuildElementToDofTable() const` | 通过调用方法 `GetElementDofs()` 构建单元-自由度表 elem_dof ，如果其已经存在，则直接返回 |
+| `` |  |
+| `` |  |
+
 ### public 成员函数
 | 方法 | 解释 |
 | ---- | ---- |
 | `FiniteElementSpace()` | 默认构造函数，在用方法 Load() 初始化之前，对象是无效的 |
 | `FiniteElementSpace(const FiniteElementSpace &orig, Mesh *mesh = NULL, const FiniteElementCollection *fec = NULL)` | 拷贝构造函数，对给定的 FiniteElementSpace 对象 orig 进行深度拷贝，但是对于成员变量 mesh 和 fec ，只有它们为 Null 时，才将其赋值为 orig.mesh 或者 orig.fec 。 mesh 和 fec 所指向的内容应该与 orig 中相应指针指向的内容相一致（或者二者互为拷贝）（调用方法 Constructor()） |
-| `FiniteElementSpace(Mesh *mesh, const FiniteElementCollection *fec, int vdim = 1, int ordering = Ordering::byNODES)` | 使用给定的变量 mesh ， fec ， vdim 和 ordering 来构造 FiniteElementSpace 对象，将变量 NURBSext 置为空（调用方法 Constructor()） |
-| `FiniteElementSpace(Mesh *mesh, NURBSExtension *ext, const FiniteElementCollection *fec, int vdim = 1, int ordering = Ordering::byNODES)` | 使用给定的变量 mesh ， ext ， fec ， vdim 和 ordering 来构造 FiniteElementSpace 对象（调用方法 Constructor()） |
+| `FiniteElementSpace(Mesh *mesh, const FiniteElementCollection *fec, int vdim = 1, int ordering = Ordering::byNODES)` | 使用给定的变量 mesh ， fec ， vdim 和 ordering 来构造 FiniteElementSpace 对象，将变量 NURBSext 置为空（调用方法 `Constructor()`） |
+| `FiniteElementSpace(Mesh *mesh, NURBSExtension *ext, const FiniteElementCollection *fec, int vdim = 1, int ordering = Ordering::byNODES)` | 使用给定的变量 mesh ， ext ， fec ， vdim 和 ordering 来构造 FiniteElementSpace 对象（调用方法 `Constructor()`） |
 | `Mesh *GetMesh() const` | 返回 mesh |
 | `NURBSExtension *GetNURBSext()` | 返回 NURBSext |
 | `const NURBSExtension *GetNURBSext() const` | 上条的 const 形式 |
@@ -141,8 +153,9 @@ table th:nth-of-type(2){
 | `const FiniteElement *GetFaceElement(int i) const` | 返回指向 fec 中对应于第 i 个面的 FiniteElement 对象的指针 |
 | `const FiniteElement *GetEdgeElement(int i) const` | 返回指向 fec 中对应于第 i 条边的 FiniteElement 对象的指针 |
 | `const FiniteElement *GetTraceElement(int i, Geometry::Type geom_type) const` |  |
-| `virtual void GetEssentialVDofs(const Array<int> &bdr_attr_is_ess, Array<int> &ess_vdofs, int component = -1) const` | （虚函数）标记“重要”的边界单元上的自由度， bdr_attr_is_ess 是一个（ Boolean ）型的向量，用于标记分类为 bdr_attr 的边界单元是否是“重要”的（即 bdr_attr_is_ess[attr-1] 是否为零），ess_vdofs 是一个长度为未知量个数的向量，用于刻画每个未知量是否是“重要”的，如果 component < 0 （默认），那么将标记所有“重要”的自由度对应的未知量，否则只标记位于第 component 维的未知量 <font color = yellow>对于非一致网格需要一些特殊的处理，待补充</font> |
-| `virtual void GetEssentialTrueDofs(const Array<int> &bdr_attr_is_ess, Array<int> &ess_tdof_list, int component = -1)` | （虚函数）标记“重要”的边界单元上的“真实”自由度，与 GetEssentialVDofs() 方法不同的是，向量 ess_tdof_list 中保存的是“重要”的真实未知量的指标 |
+| `virtual void GetEssentialVDofs(const Array<int> &bdr_attr_is_ess, Array<int> &ess_vdofs, int component = -1) const` | （虚函数）标记“重要”的边界单元上的（某些）未知量， bdr_attr_is_ess 是一个长度为边界分类个数的 Boolean 型的向量，用于标记分类为 attr 的边界单元是否是“重要”的（即 bdr_attr_is_ess[attr-1] 是否为零），ess_vdofs 是一个长度为未知量个数的向量，用于刻画每个未知量是否是“重要”的（等于-1意味着是“重要”的，等于0则意味着不“重要”），如果 component < 0 （默认），那么将标记所有“重要”的自由度对应的未知量，否则只标记位于第 component 维的未知量 <font color = yellow>对于非一致网格需要一些特殊的处理，待补充</font> |
+| `virtual void GetEssentialTrueDofs(const Array<int> &bdr_attr_is_ess, Array<int> &ess_tdof_list, int component = -1)` | （虚函数）得到“重要”的边界单元上的“真实”未知量标号，与 GetEssentialVDofs() 方法不同的是，向量 ess_tdof_list 中保存的是“重要”的真实未知量的指标（<font color=yellow>对于非一致网格，真实的概念待补充</font>） |
+| `void GetBoundaryTrueDofs(Array<int> &boundary_dofs, int component = -1)` | 得到边界上（某些）自由度的编号信息，保存到 boundary_dofs 中，如果 component < 0 （默认），那么将获取所有的自由度，否则只获取位于第 component 维的未知量。如果网格无边界（即边界类别数为0），将释放 boundary_dofs  |
 | `static void MarkerToList(const Array<int> &marker, Array<int> &list)` | （静态方法）将 boolean 的标记向量 marker 中带标记（即 marker 中对应的值非零）的指标保存到 list 中 |
 | `static void ListToMarker(const Array<int> &list, int marker_size, Array<int> &marker, int mark_val = -1)` | （静态方法）将 list 中储存的指标转化为 boolean 型的标记向量 marker ，其中 marker 的长度（即所有元素的个数）为 marker_size ，而标记值为 mark_val |
 | `void ConvertToConformingVDofs(const Array<int> &dofs, Array<int> &cdofs)` |  |

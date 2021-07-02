@@ -217,12 +217,13 @@ table th:nth-of-type(2){
 ### public 成员函数
 | 函数 | 解释 |
 | ---- | ---- |
-| `PositiveFiniteElement(int D, Geometry::Type G, int Do, int O, int F = FunctionSpace::Pk)` |  |
-| `virtual void GetLocalInterpolation(ElementTransformation &Trans, DenseMatrix &I) const` |  |
-| `virtual void GetTransferMatrix(const FiniteElement &fe, ElementTransformation &Trans, DenseMatrix &I) const` |  |
-| `virtual void Project(Coefficient &coeff, ElementTransformation &Trans, Vector &dofs) const` |  |
-| `virtual void Project (VectorCoefficient &vc, ElementTransformation &Trans, Vector &dofs) const` |  |
-| `virtual void Project(const FiniteElement &fe, ElementTransformation &Trans, DenseMatrix &I) const` |  |
+| `PositiveFiniteElement(int D, Geometry::Type G, int Do, int O, int F = FunctionSpace::Pk)` | 构造函数，调用 `ScalarFiniteElement()` |
+| `virtual void GetLocalInterpolation(ElementTransformation &Trans, DenseMatrix &I) const` | （虚函数实例）调用 `ScalarFiniteElement::ScalarLocalInterpolation()` |
+| `virtual void GetLocalRestriction(ElementTransformation &Trans, DenseMatrix &R) const` | （虚函数实例）调用 `ScalarFiniteElement::ScalarLocalRestriction()` |
+| `virtual void GetTransferMatrix(const FiniteElement &fe, ElementTransformation &Trans, DenseMatrix &I) const` | （虚函数实例）确定 fe 是 ScalarFiniteElement 对象，然后调用 `fe.ScalarLocalInterpolation()` |
+| `virtual void Project(Coefficient &coeff, ElementTransformation &Trans, Vector &dofs) const` | （虚函数实例）调用 `coeff.Eval()` |
+| `virtual void Project (VectorCoefficient &vc, ElementTransformation &Trans, Vector &dofs) const` | （虚函数实例）调用 `vc.Eval()` |
+| `virtual void Project(const FiniteElement &fe, ElementTransformation &Trans, DenseMatrix &I) const` | （虚函数实例）<font color=yellow>待补充</font> |
 
 ## （基）类 VectorFiniteElement
 - `class VectorFiniteElement : public FiniteElement`
@@ -389,19 +390,190 @@ table th:nth-of-type(2){
 
 ## 类 NodalTensorFiniteElement
 - `class NodalTensorFiniteElement : public NodalFiniteElement, public TensorBasisElement`
-- 顶点张量型有限元，定义为1D顶点型有限元的张量基
+- 顶点张量型有限元，定义为1D顶点型有限元的张量积
 ### public 成员函数
 | 方法 | 解释 |
 | ---- | ---- |
 | `NodalTensorFiniteElement(const int dims, const int p, const int btype, const DofMapType dmtype);` | 构造函数，根据相关信息分别调用父类的构造函数 `NodalFiniteElement()` 和 `TensorBasisElement()` ， 并令 lex_ordering = dof_map |
 | `const DofToQuad &GetDofToQuad(const IntegrationRule &ir, DofToQuad::Mode mode) const` | 根据积分点 ir 和模式 mode ，计算有限元对应的 DofToQuad 对象并返回 |
-| `virtual void GetTransferMatrix(const FiniteElement &fe, ElementTransformation &Trans, DenseMatrix &I) const` |  |
-| `` |  |
-| `` |  |
-| `` |  |
-| `` |  |
-| `` |  |
+| `virtual void GetTransferMatrix(const FiniteElement &fe, ElementTransformation &Trans, DenseMatrix &I) const` | <font color=yellow>待补充</font> |
 
+
+## 类 PositiveTensorFiniteElement
+- `class PositiveTensorFiniteElement : public PositiveFiniteElement, public TensorBasisElement`
+- 正张量型有限元，定义为1D正型有限元的张量积
+### public 成员函数
+| 方法 | 解释 |
+| ---- | ---- |
+| 构造函数和析构函数 |  |
+| `PositiveTensorFiniteElement(const int dims, const int p, const DofMapType dmtype)` | 构造函数，分别调用 `PositiveFiniteElement()` 和 `TensorBasisElement()` |
+| `const DofToQuad &GetDofToQuad(const IntegrationRule &ir, DofToQuad::Mode mode) const` | 根据积分点 ir 和模式 mode ，计算有限元对应的 DofToQuad 对象并返回 |
+
+
+## 类 VectorTensorFiniteElement
+- `class VectorTensorFiniteElement : public VectorFiniteElement, public TensorBasisElement`
+- 张量型向量值有限元
+### privite 成员变量
+| 变量 | 解释 |
+| ---- | ---- |
+| `mutable Array<DofToQuad*> dof2quad_array_open` |  |
+### protected 成员变量
+| 变量 | 解释 |
+| ---- | ---- |
+| `Poly_1D::Basis &cbasis1d, &obasis1d` |  |
+### public 成员函数
+| 方法 | 解释 |
+| ---- | ---- |
+| `VectorTensorFiniteElement(const int dims, const int d, const int p, const int cbtype, const int obtype, const int M, const DofMapType dmtype)` |  |
+| `const DofToQuad &GetDofToQuad(const IntegrationRule &ir, DofToQuad::Mode mode) const` |  |
+| `const DofToQuad &GetDofToQuadOpen(const IntegrationRule &ir, DofToQuad::Mode mode) const` |  |
+| `const DofToQuad &GetTensorDofToQuad(const IntegrationRule &ir, DofToQuad::Mode mode, const bool closed) const` |  |
+| `~VectorTensorFiniteElement()` |  |
+
+## 类 H1_SegmentElement
+- `class H1_SegmentElement : public NodalTensorFiniteElement`
+- 1D（线段）上任意阶有限元
+### public 成员函数
+| 方法 | 解释 |
+| ---- | ---- |
+| `H1_SegmentElement(const int p, const int btype = BasisType::GaussLobatto)` | 构造函数，构造阶数为 p 的，基类型为 btype 的1D H1有限元，要求 btype 必须是闭类型的，方法中需要对 Nodes 赋值 |
+| `virtual void CalcShape(const IntegrationPoint &ip, Vector &shape) const` | （虚函数实例） |
+| `virtual void CalcDShape(const IntegrationPoint &ip DenseMatrix &dshape) const` |  |
+| `virtual void CalcHessian(const IntegrationPoint &ip, DenseMatrix &Hessian) const` |  |
+| `virtual void ProjectDelta(int vertex, Vector &dofs) const` |  |
+
+
+## 类 H1_QuadrilateralElement
+- `class H1_QuadrilateralElement : public NodalTensorFiniteElement`
+- 矩形上任意阶张量型有限元
+### public 成员函数
+| 方法 | 解释 |
+| ---- | ---- |
+| `H1_QuadrilateralElement(const int p, const int btype = BasisType::GaussLobatto)` | 构造函数，构造阶数为 p 的，（1D）基类型为 btype 的H1矩形有限元，要求 btype 必须是闭类型的，方法中需要对 Nodes 赋值 |
+| `virtual void CalcShape(const IntegrationPoint &ip, Vector &shape) const` |  |
+| `virtual void CalcDShape(const IntegrationPoint &ip DenseMatrix &dshape) const` |  |
+| `virtual void CalcHessian(const IntegrationPoint &ip, DenseMatrix &Hessian) const` |  |
+| `virtual void ProjectDelta(int vertex, Vector &dofs) const` |  |
+
+## 类 H1_HexahedronElement
+- `class H1_HexahedronElement : public NodalTensorFiniteElement`
+- 立方体上任意阶张量型有限元
+### public 成员函数
+| 方法 | 解释 |
+| ---- | ---- |
+| `H1_HexahedronElement(const int p, const int btype = BasisType::GaussLobatto)` | 构造函数，构造阶数为 p 的，（1D）基类型为 btype 的H1立方体有限元，要求 btype 必须是闭类型的，方法中需要对 Nodes 赋值 |
+| `virtual void CalcShape(const IntegrationPoint &ip, Vector &shape) const` |  |
+| `virtual void CalcDShape(const IntegrationPoint &ip DenseMatrix &dshape) const` |  |
+| `virtual void CalcHessian(const IntegrationPoint &ip, DenseMatrix &Hessian) const` |  |
+| `virtual void ProjectDelta(int vertex, Vector &dofs) const` |  |
+
+
+## 类 H1Pos_SegmentElement
+- `class H1Pos_SegmentElement : public PositiveTensorFiniteElement`
+- 线段上的以 Bernstein 函数为基函数的张量型有限元
+### public 成员函数
+| 方法 | 解释 |
+| ---- | ---- |
+| `H1Pos_SegmentElement(const int p)` | 构造函数，构造阶数为 p 的正型H1线段有限元，方法中需要对 Nodes 赋值（对应于 Bernstein 基函数的结点） |
+| `virtual void CalcShape(const IntegrationPoint &ip, Vector &shape) const` |  |
+| `virtual void CalcDShape(const IntegrationPoint &ip DenseMatrix &dshape) const` |  |
+| `virtual void ProjectDelta(int vertex, Vector &dofs) const` |  |
+
+## 类 H1Pos_QuadrilateralElement
+- `class H1Pos_QuadrilateralElement : public PositiveTensorFiniteElement`
+- 矩形上的以 Bernstein 函数为1D基函数的张量型有限元
+### public 成员函数
+| 方法 | 解释 |
+| ---- | ---- |
+| `H1Pos_QuadrilateralElement(const int p)` | 构造函数，构造阶数为 p 的正型H1矩形有限元，方法中需要对 Nodes 赋值（对应于 Bernstein 基函数的结点的2D张量积） |
+| `virtual void CalcShape(const IntegrationPoint &ip, Vector &shape) const` |  |
+| `virtual void CalcDShape(const IntegrationPoint &ip DenseMatrix &dshape) const` |  |
+| `virtual void ProjectDelta(int vertex, Vector &dofs) const` |  |
+
+## 类 H1Pos_HexahedronElement
+- `class H1Pos_HexahedronElement : public PositiveTensorFiniteElement`
+- 立方体上的以 Bernstein 函数为1D基函数的张量型有限元
+### public 成员函数
+| 方法 | 解释 |
+| ---- | ---- |
+| `H1Pos_HexahedronElement(const int p)` | 构造函数，构造阶数为 p 的正型H1立方体有限元，方法中需要对 Nodes 赋值（对应于 Bernstein 基函数的结点的3D张量积） |
+| `virtual void CalcShape(const IntegrationPoint &ip, Vector &shape) const` |  |
+| `virtual void CalcDShape(const IntegrationPoint &ip DenseMatrix &dshape) const` |  |
+| `virtual void ProjectDelta(int vertex, Vector &dofs) const` |  |
+
+## 类 H1_TriangleElement
+- `class H1_TriangleElement : public NodalFiniteElement`
+- 三角形上任意阶结点型有限元，
+  - 有限元结点是由线段（1D）上的结点生成的
+  - 通过一个例子解释三角形单元上自由度的字典排序：对于三次元和三角形 $\Delta ABC$，假设其自由度按照自然排序排列，即自由度0、1、2分别代表顶点A、B和C上的自由度；自由度{3,4}、{5,6}、{7,8}分别代表边 $\overline{AB}$、$\overline{BC}$和$\overline{CA}$上的自由度；自由度9代表内部自由度。那么自由度的字典排序为 0-3-4-1-8-9-5-7-6-2 ，即按照从左到右、从下到上的顺序排列
+  - 单元上的基函数表示为二维p阶多项式空间中某特殊的基（见类 poly1d 和 Ti 的构建）的线性组合的形式，组合系数保存在 Ti 中
+### private 成员变量
+| 变量 | 解释 |
+| ---- | ---- |
+| `DenseMatrixInverse Ti` | dof 阶的矩阵，其每一行代表了一个基函数的组合系数（见上面的解释） |
+### public 成员函数
+| 方法 | 解释 |
+| ---- | ---- |
+| `H1_TriangleElement(const int p, const int btype = BasisType::GaussLobatto)` | 构造函数，构造三角形上阶数为 p 的，1D基函数类型为 btype 的结点型有限元，方法中需要对 Nodes ， lex_ordering 和 Ti 进行赋值，其中 Ti 实际上储存的是 Ti^(-1) 的LU分解 |
+| `virtual void CalcShape(const IntegrationPoint &ip, Vector &shape) const` |  |
+| `virtual void CalcDShape(const IntegrationPoint &ip DenseMatrix &dshape) const` |  |
+| `virtual void CalcHessian(const IntegrationPoint &ip, DenseMatrix &Hessian) const` |  |
+
+## 类 H1_TetrahedronElement
+- `class H1_TetrahedronElement : public NodalFiniteElement`
+### private 成员变量
+| 变量 | 解释 |
+| ---- | ---- |
+| `mutable Vector shape_x, shape_y, shape_z, shape_l` |  |
+| `mutable Vector dshape_x, dshape_y, dshape_z, dshape_l, u` |  |
+| `mutable Vector ddshape_x, ddshape_y, ddshape_z, ddshape_l` |  |
+| `mutable DenseMatrix du, ddu` |  |
+| `DenseMatrixInverse Ti` |  |
+### public 成员函数
+| 方法 | 解释 |
+| ---- | ---- |
+| `H1_TetrahedronElement(const int p, const int btype = BasisType::GaussLobatto)` |  |
+| `virtual void CalcShape(const IntegrationPoint &ip, Vector &shape) const` |  |
+| `virtual void CalcDShape(const IntegrationPoint &ip DenseMatrix &dshape) const` |  |
+| `virtual void CalcHessian(const IntegrationPoint &ip, DenseMatrix &Hessian) const` |  |
+
+## 类 H1Pos_TriangleElement
+- `class H1Pos_TriangleElement : public PositiveFiniteElement`
+### private 成员变量
+| 变量 | 解释 |
+| ---- | ---- |
+| `mutable Vector m_shape, dshape_1d` |  |
+| `mutable DenseMatrix m_dshape` |  |
+| `dof_map` |  |
+### public 成员函数
+| 方法 | 解释 |
+| ---- | ---- |
+| `H1Pos_TriangleElement(const int p)` |  |
+| `static void CalcShape(const int p, const double x, const double y, double *shape)` |  |
+| `static void CalcDShape(const int p, const double x, const double y, double *dshape_1d, double *dshape)` |  |
+| `virtual void CalcShape(const IntegrationPoint &ip, Vector &shape) const` |  |
+| `virtual void CalcDShape(const IntegrationPoint &ip DenseMatrix &dshape) const` |  |
+
+## 类 H1Pos_TetrahedronElement
+- `class H1Pos_TetrahedronElement : public PositiveFiniteElement`
+### private 成员变量
+| 变量 | 解释 |
+| ---- | ---- |
+| `mutable Vector m_shape, dshape_1d` |  |
+| `mutable DenseMatrix m_dshape` |  |
+| `dof_map` |  |
+### public 成员函数
+| 方法 | 解释 |
+| ---- | ---- |
+| `H1Pos_TetrahedronElement(const int p)` |  |
+| `static void CalcShape(const int p, const double x, const double y, const double z, double *shape)` |  |
+| `static void CalcDShape(const int p, const double x, const double y, const double z, double *dshape_1d, double *dshape)` |  |
+| `virtual void CalcShape(const IntegrationPoint &ip, Vector &shape) const` |  |
+| `virtual void CalcDShape(const IntegrationPoint &ip DenseMatrix &dshape) const` |  |
+| `` |  |
+| `` |  |
+| `` |  |
+| `` |  |
 
 
 ## 类 PointFiniteElement
